@@ -1,6 +1,7 @@
 import Search from './models/Search';
 import Recipe from './models/Recipe';
 import * as searchView from './views/searchView';
+import * as recipeView from './views/recipeView';
 import { elements, renderLoader, clearLoader } from './views/base';
 
 /** Global state of the app
@@ -16,10 +17,7 @@ const state = {};
  */
 const controlSearch = async () => {
     // 1) get the query from the view
-    //const query = searchView.getInput();
-
-    // TESTING
-    const query = 'pizza';
+    const query = searchView.getInput();
 
     if (query) {
         // 2) New search object and add it to state
@@ -50,13 +48,6 @@ elements.searchForm.addEventListener('submit', e => {
     controlSearch();
 });
 
-// TESTING
-window.addEventListener('load', e => {
-    e.preventDefault();
-    controlSearch();
-});
-
-
 elements.searchResPages.addEventListener('click', e => {
     const btn = e.target.closest('.btn-inline');
 
@@ -77,25 +68,32 @@ const controlRecipe = async () => {
 
     if (id) {
         // Prepare UI for changes
+        recipeView.clearRecipe();
+        renderLoader(elements.recipe);
 
+        // Highlight selected
+        if(state.search) {
+            searchView.highlightSelected(id);
+        }
+        
         // Create new recipe object
         state.recipe = new Recipe(id);
 
-        // TESTING
-        window.r = state.recipe;
-
         try {
-            // Get recipe data
+            // Get recipe data and parse ingredients
             await state.recipe.getRecipe();
+            state.recipe.parseIngredients();
 
             // Calculate servings and time
             state.recipe.calcTime();
             state.recipe.calcServings();
 
             // Render the recipe
-            console.log(state.recipe);
+            clearLoader();
+            recipeView.renderRecipe(state.recipe);
 
         } catch (error) {
+            clearLoader();
             console.log(error);
         }
     }
@@ -103,4 +101,19 @@ const controlRecipe = async () => {
 }
 
 ['hashchange', 'load'].forEach(event => window.addEventListener(event, controlRecipe));
+
+// Handling recipe btn clicks
+elements.recipe.addEventListener('click', e => {
+    if(e.target.matches('.btn-decrease, .btn-decrease *')) {
+        // Decrease button is clicked
+        if(state.recipe.servings > 1) {
+            state.recipe.updateServings('dec');
+            recipeView.updateServingsIngredients(state.recipe);
+        }
+    } else if(e.target.matches('.btn-increase, .btn-increase *')) {
+        // Increase button is clicked
+        state.recipe.updateServings('inc');
+        recipeView.updateServingsIngredients(state.recipe);
+    }
+});
 
